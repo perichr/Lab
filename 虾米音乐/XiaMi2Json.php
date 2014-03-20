@@ -37,20 +37,54 @@ class XiaMi2Json
 	public static function Auto ()
 	{
 		if( XiaMi2Json::tryGetParam( 'id', $id ) && XiaMi2Json::tryGetParam( 'callback', $callback )){
-			return XiaMi2Json::ById( $id, $callback );
+			XiaMi2Json::tryGetParam( 'type', $type );
+			if($type){
+				$type = intval($type, 10);
+			}
+			return XiaMi2Json::ById( $id, $callback, $type );
 		}
 	}
-	public static function ById( $id, $callback = null ){
-		
+	public static function ById( $id, $callback, $type = null ){
 		$json = XiaMi2Json::getUrlContent( "http://www.xiami.com/app/iphone/song/id/$id" );
 		if($json){
+			if(!$type){
+				$type = 1;
+			}
 			$result = json_decode( $json, true );
-			$lyric_url = $result["lyric"];
-			if($lyric_url){
-				$result['lyric_json'] = XiaMi2Json::getLyric($lyric_url);
+			$song = array();
+			if(1&$type){ //url
+				$song['url'] = $result['location'];
+			}
+			if(2&$type){ //title
+				$song['title'] = $result['name'];
+			}
+			if(4&$type){ //artist
+				$song['artist'] = $result['artist_name'];
+			}
+			if(8&$type){ //pic
+				$pic = $result['album_logo'];
+				if($pic){
+					$pics = array();
+					$pics['original'] = substr( $pic, 0, -6) . '.jpg';
+					$pics['100'] = substr( $pic, 0, -5) . '1.jpg';
+					$pics['small'] = substr( $pic, 0, -5) . '2.jpg';
+					$pics['55'] = substr( $pic, 0, -5) . '3.jpg';
+					$pics['medium'] = substr( $pic, 0, -5) . '4.jpg';
+					$pics['185'] = substr( $pic, 0, -5) . '5.jpg';
+					$song['pic'] = $pics;
+				}
+			}
+			if(16&$type){ //lyric_url
+				$song['lyric_url'] = $result['lyric'];
+			}
+			if(32&$type){ //lyric
+				$lyric_url = $result["lyric"];
+				if($lyric_url){
+					$song['lyric'] = XiaMi2Json::getLyric($lyric_url);
+				}
 			}
 		}
-		$json = json_encode( $result );
+		$json = json_encode( $song );
 		return is_null( $callback ) ? $json : "$callback($json)";
 	}
 }
